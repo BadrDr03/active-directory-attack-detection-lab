@@ -1,80 +1,53 @@
-# ENV-005 — Logging and Auditing Configuration
+## Telemetry Validation
 
-## Objective
+### Domain Controller Telemetry
 
-Configure centralized Windows security telemetry for the Active Directory lab in order to support threat detection, SOC investigation, and incident analysis.
+Windows Event Logs from the Domain Controller were successfully forwarded to the dedicated Splunk `ad_lab` index.
 
-## Advanced Audit Policy
+![DC01 Splunk Telemetry](../../screenshots/environment/11-dc01-splunk-telemetry.png)
 
-A dedicated Group Policy Object named:
+---
 
-`AD-Lab-Advanced-Auditing`
+### Centralized Windows Telemetry
 
-was created and linked to the Domain Controllers OU.
+The following Splunk search was used to verify event collection across the monitored Windows systems:
 
-The following audit categories were enabled:
+```spl
+index=ad_lab
+| stats count by host
+| sort - count
+```
 
-### Account Logon
-- Kerberos Authentication Service — Success and Failure
-- Kerberos Service Ticket Operations — Success and Failure
-- Credential Validation — Success and Failure
+Telemetry was successfully received from the Domain Controller and both Windows workstations.
 
-### Account Management
-- User Account Management — Success and Failure
-- Security Group Management — Success and Failure
+![AD Lab Host Telemetry](../../screenshots/environment/12-ad-lab-host-telemetry.png)
 
-### Logon / Logoff
-- Logon — Success and Failure
-- Account Lockout — Failure
+---
 
-### Directory Service Access
-- Directory Service Changes — Success
-- Directory Service Access — Success and Failure
+### DC01 Sysmon Telemetry
 
-### Policy Change
-- Audit Policy Change — Success and Failure
+After deploying Sysmon and configuring the Splunk Universal Forwarder, Sysmon Operational events were successfully ingested from the Domain Controller.
 
-These settings provide visibility into authentication activity, Kerberos operations, account changes, privileged group modifications, and Active Directory object activity.
+![DC01 Sysmon Telemetry](../../screenshots/environment/13-dc01-sysmon-telemetry.png)
 
-## Sysmon Deployment
+---
 
-Microsoft Sysmon was deployed on:
+### Sysmon Telemetry Across All Hosts
+
+The following search was used to validate centralized Sysmon telemetry:
+
+```spl
+index=ad_lab source="WinEventLog:Microsoft-Windows-Sysmon/Operational"
+| stats count by host
+| sort - count
+```
+
+Sysmon telemetry was successfully observed from:
 
 - DC01-AD-LAB
 - CLIENT01
 - CLIENT02
 
-The SwiftOnSecurity Sysmon configuration was used to provide enhanced endpoint telemetry including process creation and other security-relevant system activity.
+![Sysmon All Hosts Telemetry](../../screenshots/environment/14-sysmon-all-hosts-telemetry.png)
 
-Sysmon events are generated under:
-
-`Microsoft-Windows-Sysmon/Operational`
-
-## Splunk Universal Forwarder
-
-Splunk Universal Forwarder is installed on all monitored Windows systems.
-
-Events are forwarded to:
-
-`10.0.20.40:9997`
-
-and stored in the dedicated Splunk index:
-
-`ad_lab`
-
-The following Windows Event Log channels are collected:
-
-- Security
-- System
-- Directory Service (Domain Controller)
-- Microsoft-Windows-Sysmon/Operational
-
-## Sysmon Input Configuration
-
-Example Splunk Universal Forwarder configuration:
-
-```ini
-[WinEventLog://Microsoft-Windows-Sysmon/Operational]
-disabled = 0
-index = ad_lab
-renderXml = true
+This confirms that the endpoint telemetry pipeline is operational across all monitored Windows systems.
